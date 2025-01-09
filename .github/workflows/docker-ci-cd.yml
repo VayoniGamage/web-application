@@ -13,25 +13,32 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up SSH key
+    - name: Set up SSH key and host
+      env:
+        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}  # Define REMOTE_HOST from GitHub Secrets
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # Fetch SSH key from GitHub Secrets
         chmod 600 ~/.ssh/id_rsa  # Set correct permissions for the private key
-        # Debugging step to check the key contents (optional, remove in production)
-        echo "Private key content: $(cat ~/.ssh/id_rsa)"
         ssh-keyscan -H $REMOTE_HOST >> ~/.ssh/known_hosts  # Add remote host to known hosts
         cat ~/.ssh/known_hosts  # Verify that the known_hosts file is correctly written
 
     - name: Test SSH connection
+      env:
+        REMOTE_USER: ${{ secrets.REMOTE_USER }}
+        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
       run: |
-        ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $REMOTE_USER@$REMOTE_HOST "echo 'SSH Connection Successful'"  # Replace $REMOTE_USER and $REMOTE_HOST with appropriate values
+        ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $REMOTE_USER@$REMOTE_HOST "echo 'SSH Connection Successful'"
 
     - name: Deploy Docker container
+      env:
+        REMOTE_USER: ${{ secrets.REMOTE_USER }}
+        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+        DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
       run: |
-        ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $REMOTE_USER@$REMOTE_HOST << 'EOF'
-          docker pull $DOCKER_IMAGE:latest  # Replace $DOCKER_IMAGE with your Docker image name
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $REMOTE_USER@$REMOTE_HOST << 'EOF'
+          docker pull $DOCKER_IMAGE:latest
           docker stop web-project || true
           docker rm web-project || true
-          docker run -d -p 80:80 --name web-project $DOCKER_IMAGE:latest  # Replace $DOCKER_IMAGE with your Docker image name
+          docker run -d -p 80:80 --name web-project $DOCKER_IMAGE:latest
         EOF
