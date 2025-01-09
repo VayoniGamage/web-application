@@ -33,10 +33,9 @@ jobs:
       - name: Deploy to Server
         if: github.ref == 'refs/heads/main'
         run: |
-          ssh -o StrictHostKeyChecking=no user@hostname << 'EOF'
-  docker pull ***/web-project:latest
-  docker stop web-project || true
-  docker rm web-project || true
-  docker run -d -p 80:80 --name web-project ***/web-project:latest
-EOF
-
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          docker pull vtg22ug0392/web-project:latest
+          docker stop web-project || true
+          docker rm web-project || true
+          docker run -d -p 80:80 --name web-project vtg22ug0392/web-project:latest
+          EOF
