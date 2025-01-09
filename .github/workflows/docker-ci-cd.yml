@@ -29,15 +29,20 @@ jobs:
       - name: Push Docker Image to DockerHub
         run: docker push vtg22ug0392/web-project:latest
 
-      # Optional: Deploy to a server (using SSH)
+      # Deploy to Server
       - name: Deploy to Server
         if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p ~/.ssh
+          # Debugging step to check SSH private key
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "Private key content: $(cat ~/.ssh/id_rsa)" # Debug the private key (remove this line in production)
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          # Debugging to check if the key is valid
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo 'SSH Connection Successful'"
+          
+          # Deploy Docker commands
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             docker pull vtg22ug0392/web-project:latest
             docker stop web-project || true
