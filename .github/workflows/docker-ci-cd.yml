@@ -1,0 +1,18 @@
+# Ensure the .ssh directory exists
+mkdir -p ~/.ssh
+
+# Set the server's SSH key to the known_hosts file
+echo "Server IP: ${{ secrets.SERVER_IP }}"
+ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+# Verify SSH connection
+echo "Testing SSH connection"
+ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo 'SSH Connection Successful'"
+
+# Pull the Docker image and run the container on the server
+ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+  docker pull ${{ secrets.DOCKER_USERNAME }}/web-project:latest
+  docker stop web-project || true
+  docker rm web-project || true
+  docker run -d -p 80:80 --name web-project ${{ secrets.DOCKER_USERNAME }}/web-project:latest
+EOF
