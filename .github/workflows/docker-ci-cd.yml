@@ -1,0 +1,37 @@
+name: Docker CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # Fetch SSH key from GitHub Secrets
+        chmod 600 ~/.ssh/id_rsa  # Set correct permissions for the private key
+        # Debugging step to check the key contents (optional, remove in production)
+        echo "Private key content: $(cat ~/.ssh/id_rsa)"
+        ssh-keyscan -H $REMOTE_HOST >> ~/.ssh/known_hosts  # Add remote host to known hosts
+        cat ~/.ssh/known_hosts  # Verify that the known_hosts file is correctly written
+
+    - name: Test SSH connection
+      run: |
+        ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $REMOTE_USER@$REMOTE_HOST "echo 'SSH Connection Successful'"  # Replace $REMOTE_USER and $REMOTE_HOST with appropriate values
+
+    - name: Deploy Docker container
+      run: |
+        ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $REMOTE_USER@$REMOTE_HOST << 'EOF'
+          docker pull $DOCKER_IMAGE:latest  # Replace $DOCKER_IMAGE with your Docker image name
+          docker stop web-project || true
+          docker rm web-project || true
+          docker run -d -p 80:80 --name web-project $DOCKER_IMAGE:latest  # Replace $DOCKER_IMAGE with your Docker image name
+        EOF
